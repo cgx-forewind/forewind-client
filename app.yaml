@@ -1,0 +1,9 @@
+# Databricks Apps configuration. `npm install` and `npm run build` run during deployment,
+# then the command below starts the static server on the port Databricks provides.
+command: ["npm", "run", "start"]
+env:
+  - name: NODE_ENV
+    value: production
+  # Point to a Databricks-hosted engine endpoint when replacing the mock services:
+  # - name: ENGINE_ENDPOINT
+  #   valueFrom: engine-serving-endpoint   # a Databricks Apps resource

@@ -1,0 +1,43 @@
+// Minimal static server for Databricks Apps (and any Node host).
+// Serves ./dist with SPA fallback. Predictions, optimisation, safety decisions and agent
+// orchestration are NOT implemented here — the frontend talks to the unified engine through
+// src/services/api.ts. Replace the mock handlers there with calls to /api/engine/* (proxy below).
+import { createServer } from "node:http";
+import { readFile, stat } from "node:fs/promises";
+import { extname, join, normalize } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = join(fileURLToPath(new URL(".", import.meta.url)), "dist");
+const port = Number(process.env.DATABRICKS_APP_PORT || process.env.PORT || 8000);
+const types = {
+  ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml",
+  ".json": "application/json", ".png": "image/png", ".ico": "image/x-icon", ".woff2": "font/woff2",
+};
+
+createServer(async (req, res) => {
+  const url = new URL(req.url ?? "/", "http://localhost");
+  if (url.pathname === "/healthz") {
+    res.writeHead(200, { "content-type": "application/json" });
+    return res.end(JSON.stringify({ status: "ok", app: "team-cgx-predictive-maintenance" }));
+  }
+  // Placeholder for the real engine gateway (e.g. Databricks Model Serving / Jobs endpoints).
+  if (url.pathname.startsWith("/api/engine/")) {
+    res.writeHead(501, { "content-type": "application/json" });
+    return res.end(JSON.stringify({ error: "Engine gateway not configured. Frontend is using mock services." }));
+  }
+  let file = normalize(join(root, url.pathname === "/" ? "index.html" : url.pathname));
+  if (!file.startsWith(root)) { res.writeHead(403); return res.end(); }
+  try {
+    if (!(await stat(file)).isFile()) throw new Error("nf");
+  } catch {
+    file = join(root, "index.html");
+  }
+  try {
+    const body = await readFile(file);
+    const cache = file.includes("/assets/") ? "public, max-age=31536000, immutable" : "no-cache";
+    res.writeHead(200, { "content-type": types[extname(file)] ?? "application/octet-stream", "cache-control": cache });
+    res.end(body);
+  } catch {
+    res.writeHead(500); res.end("Server error");
+  }
+}).listen(port, () => console.log(`Team CGX app listening on :${port}`));
