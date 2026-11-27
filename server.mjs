@@ -2,6 +2,7 @@
 // Serves ./dist with SPA fallback. Predictions, optimisation, safety decisions and agent
 // orchestration are NOT implemented here — the frontend talks to the unified engine through
 // src/services/api.ts. Replace the mock handlers there with calls to /api/engine/* (proxy below).
+import { readSignals } from "./warehouse.mjs";
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
@@ -16,6 +17,22 @@ const types = {
 
 createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
+  if (url.pathname === "/api/warehouse/signals") {
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Cache-Control", "no-store");
+    if (req.method !== "GET") {
+      res.writeHead(405, { Allow: "GET" });
+      return res.end();
+    }
+    try {
+      const { status, body } = await readSignals();
+      res.writeHead(status);
+      return res.end(JSON.stringify(body));
+    } catch {
+      res.writeHead(502);
+      return res.end(JSON.stringify({ error: "Warehouse query failed. Check access, column mapping and warehouse availability." }));
+    }
+  }
   if (url.pathname === "/healthz") {
     res.writeHead(200, { "content-type": "application/json" });
     return res.end(JSON.stringify({ status: "ok", app: "team-cgx-predictive-maintenance" }));

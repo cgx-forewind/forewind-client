@@ -1,3 +1,4 @@
+import { WarehouseSignals } from "@/components/WarehouseSignals";
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ClipboardCheck, Cpu, ListChecks, Search } from "lucide-react";
@@ -35,6 +36,7 @@ export default function Predictive() {
   return (
     <div className="page">
       <PageHeader title="Predictive maintenance" subtitle={<>Failure predictions, RUL and reasoning <SimTag className="ml-1" /></>} />
+      <WarehouseSignals />
       <div className="grid grid-cols-3 gap-3">
         <KpiCard label="Green · healthy" value={counts.green} tone="ok" hint="Risk < 35 %" />
         <KpiCard label="Yellow · degrading" value={counts.yellow} tone="warn" hint="35–75 % — plan maintenance" />
