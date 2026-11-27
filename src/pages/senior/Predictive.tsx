@@ -43,6 +43,7 @@ export default function Predictive() {
       </a>
       <TrainingSources />
       <WarehouseSignals />
+      <h2 className="font-semibold">Simulated fleet predictions</h2>
       <div className="grid grid-cols-3 gap-3">
         <KpiCard label="Green · healthy" value={counts.green} tone="ok" hint="Risk < 35 %" />
         <KpiCard label="Yellow · degrading" value={counts.yellow} tone="warn" hint="35–75 % — plan maintenance" />

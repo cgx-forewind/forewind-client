@@ -9,10 +9,11 @@ function timestamp(value: string) {
   return Date.parse(/(?:Z|[+-]\d{2}:\d{2})$/i.test(iso) ? iso : iso + "Z");
 }
 
-type Track = { key: string; sourceName: string; stamps: string[] };
+type Signals = readonly [string | number | null, string | number | null];
+type Track = { key: string; sourceName: string; stamps: string[]; signals: Signals[]; powerUnit: string };
 
 const useReplay = create<{ track: Track; reading: number; simulationDirectory: boolean }>(() => ({
-  track: { key: "care:10:training", sourceName: "CARE · Farm A · Turbine 10", stamps: defaultSample.rows.map(r => String(r[0])) },
+  track: { key: "care:10:training", sourceName: "CARE · Farm A · Turbine 10", powerUnit: "source units", signals: defaultSample.rows.map(r => [r[1], r[2]]), stamps: defaultSample.rows.map(r => String(r[0])) },
   reading: 0, simulationDirectory: true,
 }));
 
@@ -48,7 +49,7 @@ function DatasetPicker() {
       if (!sample.rows.length) throw new Error();
       if (version === request.current) {
         useReplay.setState({ track: { key: `${id}:${sample.turbine}:training`,
-          sourceName: `${source.name} · Turbine ${sample.turbine}`, stamps: sample.rows.map(row => row[0]) },
+          sourceName: `${source.name} · Turbine ${sample.turbine}`, powerUnit: source.unit, signals: sample.rows.map(row => [row[1], row[2]]), stamps: sample.rows.map(row => row[0]) },
           reading: 0, simulationDirectory: false });
       }
     } catch {
@@ -68,19 +69,36 @@ export function currentReplaySelection() {
   return { source, turbine, window };
 }
 
-export function SignalReplay({ trackKey, sourceName, stamps, children }: {
+export function SignalReplay({ trackKey, sourceName, stamps, signals, powerUnit, children }: {
   trackKey: string;
   sourceName: string;
   stamps: string[];
+  signals: Signals[];
+  powerUnit: string;
   children: (reading: number) => ReactNode;
 }) {
   const reading = useReplay(s => s.track.key === trackKey ? s.reading : 0);
   useLayoutEffect(() => {
     if (useReplay.getState().track.key !== trackKey) {
-      useReplay.setState({ track: { key: trackKey, sourceName, stamps }, reading: 0 });
+      useReplay.setState({ track: { key: trackKey, sourceName, stamps, signals, powerUnit }, reading: 0 });
     }
-  }, [trackKey, sourceName, stamps]);
+  }, [trackKey, sourceName, stamps, signals, powerUnit]);
   return <>{children(reading)}</>;
+}
+
+export function ReplayReadings() {
+  const track = useReplay(s => s.track);
+  const reading = useReplay(s => s.reading);
+  const [wind, power] = track.signals[reading];
+  const format = (value: Signals[number], unit: string) => value === null
+    ? "Unavailable" : Number(value).toLocaleString("en-GB", { maximumSignificantDigits: 5 }) + " " + unit;
+  return <section aria-label="Historical replay readings" className="flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-line bg-white px-4 py-2 text-sm tabular-nums">
+    <div><strong>{track.sourceName}</strong><p className="text-xs text-muted">Historical replay · {track.stamps[reading]}</p></div>
+    <dl className="flex flex-wrap gap-x-6">
+      <div><dt className="text-xs text-muted">Wind speed</dt><dd>{format(wind, "m/s")}</dd></div>
+      <div><dt className="text-xs text-muted">Active power</dt><dd>{format(power, track.powerUnit)}</dd></div>
+    </dl>
+  </section>;
 }
 
 export function ReplayFooter() {
@@ -100,7 +118,7 @@ export function ReplayFooter() {
   </footer>;
 }
 
-function Controls({ sourceName, stamps }: Omit<Track, "key">) {
+function Controls({ sourceName, stamps }: Pick<Track, "sourceName" | "stamps">) {
   const times = useMemo(() => stamps.map(timestamp), [stamps]);
   const options = useMemo(() => stamps.map((stamp, i) => <option key={i} value={i}>{stamp}</option>), [stamps]);
   const duration = times[times.length - 1] - times[0];

@@ -1,4 +1,4 @@
-import { ReplayFooter } from "@/components/SignalReplay";
+import { ReplayFooter, ReplayReadings } from "@/components/SignalReplay";
 import { Suspense, lazy, useEffect } from "react";
 import { useStore, roleHome } from "@/store/useStore";
 import { go, parse, useHash } from "@/lib/router";
@@ -74,6 +74,7 @@ export default function App() {
   return (
     <>
       <Shell>
+        <ReplayReadings />
         <Suspense fallback={<Fallback />}><Routes /></Suspense>
       </Shell>
       <ReplayFooter />

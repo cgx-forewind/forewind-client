@@ -63,6 +63,13 @@ function MetricTable({ source, turbine, sourceName, sample, rows, catalog, timeC
     const index = sample.columns.indexOf(timeColumn);
     return rows.map(row => row[index] ?? "");
   }, [sample, rows, timeColumn]);
+  const signals = useMemo(() => {
+    const windColumn = source === "care" ? "wind_speed_3_avg" : source === "la-haute-borne" ? "Ws_avg" : "Wind speed (m/s)";
+    const powerColumn = source === "care" ? "power_30_avg" : source === "la-haute-borne" ? "P_avg" : "Power (kW)";
+    const wind = sample.columns.indexOf(windColumn);
+    const power = sample.columns.indexOf(powerColumn);
+    return rows.map(row => [row[wind] ?? null, row[power] ?? null] as const);
+  }, [rows, sample.columns, source]);
   const metrics = useMemo(() => pilotSeries(source, turbine, sample.columns, rows, stamps), [source, turbine, sample.columns, rows, stamps]);
   const fields = useMemo(() => {
     const indices = new Map(sample.columns.map((name, index) => [name, index]));
@@ -70,7 +77,7 @@ function MetricTable({ source, turbine, sourceName, sample, rows, catalog, timeC
     return names.filter(name => name.toLowerCase().includes(query.trim().toLowerCase()))
       .map(name => ({ name, index: indices.get(name) }));
   }, [sample.columns, catalog, query]);
-  return <SignalReplay trackKey={source + ":" + turbine + ":" + (rows === sample.trainingRows ? "training" : "sample")} sourceName={sourceName + " · Turbine " + turbine} stamps={stamps}>{reading => <>
+  return <SignalReplay trackKey={source + ":" + turbine + ":" + (rows === sample.trainingRows ? "training" : "sample")} sourceName={sourceName + " · Turbine " + turbine} stamps={stamps} signals={signals} powerUnit={sources.find(s => s.id === source)!.unit}>{reading => <>
     <section aria-label="Derived metrics">
       <h4 className="font-semibold">Derived metrics</h4>
       <table className="tbl w-full"><thead><tr><th>Metric</th><th>Value</th><th>Inputs or availability</th></tr></thead>
