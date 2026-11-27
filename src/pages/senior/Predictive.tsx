@@ -35,6 +35,10 @@ export default function Predictive() {
   return (
     <div className="page">
       <PageHeader title="Predictive maintenance" subtitle={<>Failure predictions, RUL and reasoning <SimTag className="ml-1" /></>} />
+      <a className="block rounded-lg border border-line bg-white p-4 hover:border-primary" href="./care/event40.html">
+        <strong>Explore the historical CARE replay →</strong>
+        <span className="block text-sm text-muted">Farm A · Turbine 10 · Event 40. Inspect recorded bearing temperatures and model alert onsets.</span>
+      </a>
       <div className="grid grid-cols-3 gap-3">
         <KpiCard label="Green · healthy" value={counts.green} tone="ok" hint="Risk < 35 %" />
         <KpiCard label="Yellow · degrading" value={counts.yellow} tone="warn" hint="35–75 % — plan maintenance" />
