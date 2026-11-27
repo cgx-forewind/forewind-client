@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { SignalReplay } from "@/components/SignalReplay";
+import { HistoricalMetrics } from "@/components/HistoricalMetrics";
 import { sources } from "@/lib/trainingSources";
 
 type Sample = { turbine: string; rows: [string, number, number][] };
@@ -42,15 +42,12 @@ function TrainingResult({ source }: { source: typeof sources[number] }) {
     load().catch(() => { if (!controller.signal.aborted) setFailed(true); });
     return () => controller.abort();
   }, [source.id]);
-  const stamps = useMemo(() => data?.rows.map(row => row[0]) ?? [], [data]);
   if (!data) return <p role="status">{failed ? "Historical sample unavailable." : "Loading sample…"}</p>;
   const { split, scored, mae } = evaluate(data);
   const { rows } = data;
   return <div className="space-y-2">
-    <SignalReplay sourceName={source.name} stamps={stamps}>{i =>
-      <p className="tabular-nums">Wind speed: {rows[i][1]} m/s · Active power: {rows[i][2]} {source.unit}</p>}
-    </SignalReplay>
-    <p>Turbine {data.turbine} · {rows[0][0].slice(0, 10)} to {rows[rows.length - 1][0].slice(0, 10)}</p>
+    <HistoricalMetrics source={source.id} trainingTurbine={data.turbine} />
+    <p>Training baseline · Turbine {data.turbine} · {rows[0][0].slice(0, 10)} to {rows[rows.length - 1][0].slice(0, 10)}</p>
     <p>{split} training readings · {scored} of {rows.length - split} later readings scored</p>
     <p>Mean absolute power error: <strong>{mae === null ? "Unavailable" : `${mae.toPrecision(3)} ${source.unit}`}</strong></p>
     <a className="underline" href={source.url}>Source data</a> · <a className="underline" href="./training/SOURCES.md">Sample credits</a>
