@@ -1,3 +1,5 @@
+import { TrainingSources } from "@/components/TrainingSources";
+import { WarehouseSignals } from "@/components/WarehouseSignals";
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ClipboardCheck, Cpu, ListChecks, Search } from "lucide-react";
@@ -35,6 +37,12 @@ export default function Predictive() {
   return (
     <div className="page">
       <PageHeader title="Predictive maintenance" subtitle={<>Failure predictions, RUL and reasoning <SimTag className="ml-1" /></>} />
+      <a className="block rounded-lg border border-line bg-white p-4 hover:border-primary" href="./care/event40.html">
+        <strong>Explore the historical CARE replay →</strong>
+        <span className="block text-sm text-muted">Farm A · Turbine 10 · Event 40. Inspect recorded bearing temperatures and model alert onsets.</span>
+      </a>
+      <TrainingSources />
+      <WarehouseSignals />
       <div className="grid grid-cols-3 gap-3">
         <KpiCard label="Green · healthy" value={counts.green} tone="ok" hint="Risk < 35 %" />
         <KpiCard label="Yellow · degrading" value={counts.yellow} tone="warn" hint="35–75 % — plan maintenance" />
