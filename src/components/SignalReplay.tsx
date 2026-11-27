@@ -1,3 +1,5 @@
+import { sources } from "@/lib/trainingSources";
+import { useHash } from "@/lib/router";
 import { create } from "zustand";
 import defaultSample from "../../public/training/care.json";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -9,10 +11,57 @@ function timestamp(value: string) {
 
 type Track = { key: string; sourceName: string; stamps: string[] };
 
-const useReplay = create<{ track: Track; reading: number }>(() => ({
+const useReplay = create<{ track: Track; reading: number; simulationDirectory: boolean }>(() => ({
   track: { key: "care:10:training", sourceName: "CARE · Farm A · Turbine 10", stamps: defaultSample.rows.map(r => String(r[0])) },
-  reading: 0,
+  reading: 0, simulationDirectory: true,
 }));
+
+export function useReplayDataset(directory = false) {
+  return useReplay(s => directory && s.simulationDirectory ? "simulation" : s.track.key.split(":")[0]);
+}
+
+function DatasetPicker() {
+  const directory = useHash().split("?")[0] === "#/senior/turbines";
+  const selected = useReplayDataset(directory);
+  const request = useRef(0);
+  const [pending, setPending] = useState("");
+  const [error, setError] = useState(false);
+
+  async function choose(id: string) {
+    const version = ++request.current;
+    setError(false);
+    setPending("");
+    if (id === "simulation") {
+      useReplay.setState({ simulationDirectory: true });
+      return;
+    }
+    if (currentReplaySelection().source === id) {
+      useReplay.setState({ simulationDirectory: false });
+      return;
+    }
+    setPending(id);
+    try {
+      const source = sources.find(s => s.id === id)!;
+      const response = await fetch(`./training/${id}.json`);
+      if (!response.ok) throw new Error();
+      const sample: { turbine: string; rows: [string, number, number][] } = await response.json();
+      if (!sample.rows.length) throw new Error();
+      if (version === request.current) {
+        useReplay.setState({ track: { key: `${id}:${sample.turbine}:training`,
+          sourceName: `${source.name} · Turbine ${sample.turbine}`, stamps: sample.rows.map(row => row[0]) },
+          reading: 0, simulationDirectory: false });
+      }
+    } catch {
+      if (version === request.current) setError(true);
+    } finally {
+      if (version === request.current) setPending("");
+    }
+  }
+  return <label className="text-xs">Dataset <select aria-label="Dataset" className="rounded border p-1" value={pending || selected} onChange={e => void choose(e.target.value)}>
+    {directory && <option value="simulation">Simulated fleet</option>}
+    {sources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+  </select>{error && <span role="status"> Dataset unavailable.</span>}</label>;
+}
 
 export function currentReplaySelection() {
   const [source, turbine, window] = useReplay.getState().track.key.split(":");
@@ -46,6 +95,7 @@ export function ReplayFooter() {
     return () => observer.disconnect();
   }, []);
   return <footer ref={footer} aria-label="Historical playback" className="replay-footer no-print fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white px-3 pt-1 shadow-pop">
+    <div className="mx-auto max-w-[1400px]"><DatasetPicker /></div>
     <Controls key={track.key} sourceName={track.sourceName} stamps={track.stamps} />
   </footer>;
 }

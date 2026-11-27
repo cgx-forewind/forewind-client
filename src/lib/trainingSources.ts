@@ -7,6 +7,5 @@ export const sources = [
 
 // Keep each replay view's selection while its route is unmounted.
 export const replaySelection = {
-  directory: "simulation",
   turbines: new Map<string, string>(),
 };

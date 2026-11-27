@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { HistoricalMetrics } from "@/components/HistoricalMetrics";
-import { currentReplaySelection } from "@/components/SignalReplay";
+import { useReplayDataset } from "@/components/SignalReplay";
 import { sources } from "@/lib/trainingSources";
 
 type Sample = { turbine: string; rows: [string, number, number][] };
@@ -56,14 +56,11 @@ function TrainingResult({ source }: { source: typeof sources[number] }) {
 }
 
 export function TrainingSources() {
-  const [id, setId] = useState(() => currentReplaySelection().source);
+  const id = useReplayDataset();
   const source = sources.find(s => s.id === id)!;
   return <Card>
     <CardHeader><CardTitle>Historical wind-to-power training</CardTitle></CardHeader>
     <CardContent className="space-y-3">
-      <label>Training dataset <select className="rounded border p-1" value={id} onChange={e => setId(e.target.value)}>
-        {sources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-      </select></label>
       <p className="text-sm text-muted">Fit average power per 1 m/s wind band on the earliest 80% of the sample. Score later readings in wind bands seen during training.</p>
       <TrainingResult key={id} source={source} />
     </CardContent>

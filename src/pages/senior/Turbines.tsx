@@ -1,6 +1,5 @@
-import { currentReplaySelection } from "@/components/SignalReplay";
+import { useReplayDataset } from "@/components/SignalReplay";
 import { HistoricalMetrics } from "@/components/HistoricalMetrics";
-import { sources, replaySelection } from "@/lib/trainingSources";
 import { useMemo, useState } from "react";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
 import { useStore } from "@/store/useStore";
@@ -17,7 +16,7 @@ import type { Risk, TurbineView } from "@/types";
 const maintLabel: Record<string, string> = { none: "—", awaiting_approval: "Awaiting approval", scheduled: "Scheduled", dispatching: "Dispatching", in_progress: "In progress", emergency: "Emergency response" };
 
 export default function Turbines() {
-  const [source, setSource] = useState(() => replaySelection.directory === "simulation" ? "simulation" : currentReplaySelection().source);
+  const source = useReplayDataset(true);
   const fleet = useStore((s) => s.fleet);
   const [q, setQ] = useState("");
   const [risk, setRisk] = useState<Risk | "all">("all");
@@ -42,10 +41,6 @@ export default function Turbines() {
   return (
     <div className="page">
       <PageHeader title="Turbine management" subtitle={source === "simulation" ? <>Fleet directory <SimTag className="ml-1" /></> : "Historical SCADA readings"} />
-      <label>Dataset <select aria-label="Dataset" className="rounded border p-1" value={source} onChange={e => { replaySelection.directory = e.target.value; setSource(e.target.value); }}>
-        <option value="simulation">Simulated fleet</option>
-        {sources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-      </select></label>
       {source !== "simulation" ? <HistoricalMetrics key={source} source={source} /> :
       <Card>
         <div className="flex flex-wrap items-center gap-3 border-b border-line p-4">
