@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useState } from "react";
+import { sensorDisplay, sensorPrecision } from "@/lib/sensorDisplay";
 import { pilotSeries } from "@/lib/pilotMetrics";
 import { currentReplaySelection, SignalReplay } from "@/components/SignalReplay";
 import { sources, replaySelection } from "@/lib/trainingSources";
@@ -66,9 +67,12 @@ function MetricTable({ source, turbine, sourceName, sample, rows, timeColumn, qu
   const metrics = useMemo(() => pilotSeries(source, turbine, sample.columns, rows, stamps), [source, turbine, sample.columns, rows, stamps]);
   const availableFields = useMemo(() => {
     const hasReading = (value: string | null | undefined) => value != null && value.trim() !== "";
+    const precisionRows = [...(sample.trainingRows ?? []), ...sample.rows];
     return sample.columns.map((name, index) => ({ name, index })).filter(({ index }) =>
       sample.rows.some(row => hasReading(row[index])) ||
-      sample.trainingRows?.some(row => hasReading(row[index])));
+      sample.trainingRows?.some(row => hasReading(row[index]))).map(field => ({
+        ...field, digits: sensorPrecision(field.name, precisionRows.map(row => row[field.index])),
+      }));
   }, [sample]);
   const fields = availableFields.filter(({ name }) => name.toLowerCase().includes(query.trim().toLowerCase()));
   return <SignalReplay trackKey={source + ":" + turbine + ":" + (rows === sample.trainingRows ? "training" : "sample")} sourceName={sourceName + " · Turbine " + turbine} stamps={stamps} signals={signals} powerUnit={sources.find(s => s.id === source)!.unit}>{reading => <>
@@ -90,15 +94,15 @@ function MetricTable({ source, turbine, sourceName, sample, rows, timeColumn, qu
 }
 
 const SensorValues = memo(function SensorValues({ fields, row, file }: {
-  fields: { name: string; index: number }[]; row: (string | null)[]; file: string;
+  fields: { name: string; index: number; digits: number | null }[]; row: (string | null)[]; file: string;
 }) {
   return <section aria-label="Sensor values">
     <p className="break-all text-xs text-muted">{fields.length} matching column names · {file} · <a className="underline" href="./training/SOURCES.md">Data credits</a></p>
     <div className="max-h-96 overflow-auto">
       <table className="tbl w-full"><thead className="sticky top-0 bg-white"><tr><th scope="col">Source column</th><th scope="col">Recorded value</th></tr></thead>
-        <tbody>{fields.map(({ name, index }) => <tr key={name} className="sensor-row">
+        <tbody>{fields.map(({ name, index, digits }) => <tr key={name} className="sensor-row">
           <th className="break-words text-left font-normal" scope="row">{name}</th>
-          <td>{row[index]?.trim() || "Missing at this time"}</td>
+          <td title={row[index] ?? undefined}>{sensorDisplay(row[index], digits)}</td>
         </tr>)}</tbody>
       </table>
       {fields.length === 0 && <p>No matching columns.</p>}
