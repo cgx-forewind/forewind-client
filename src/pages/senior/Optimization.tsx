@@ -12,6 +12,8 @@ import { dayStart } from "@/engine/fleet";
 import { tokens } from "@/lib/tokens";
 import type { MaintWindow } from "@/types";
 
+import WindForecast from "./WindForecast";
+
 const DAY = 86400000;
 
 export default function Optimization() {
@@ -40,6 +42,7 @@ export default function Optimization() {
   if (sc.kind === "red")
     return (
       <div className="page"><PageHeader title="Maintenance optimisation" />
+        <WindForecast />
         <div className="rounded-xl border border-crit/30 bg-crit-soft p-5 text-crit-ink"><p className="flex items-center gap-2 font-semibold"><ShieldAlert className="h-5 w-5" /> Optimisation bypassed for {sc.turbineId}</p>
           <p className="mt-1 text-sm">Emergency priority overrides financial optimisation. The engine is dispatching immediately; no revenue-based delay is allowed. See Engine Activity for the live incident.</p>
           <Button className="mt-3" variant="destructive" size="sm" onClick={() => (window.location.hash = "#/senior/engine")}>Open live incident</Button></div></div>
@@ -48,6 +51,7 @@ export default function Optimization() {
   if (!windows.length)
     return (
       <div className="page"><PageHeader title="Maintenance optimisation" subtitle={<>Compare recommended maintenance windows <SimTag className="ml-1" /></>} />
+        <WindForecast />
         <Card><EmptyState title="No maintenance plan to review" body="Windows are computed when the engine raises a yellow alert. Raise one now, or use Demo mode." action={<Button size="sm" disabled={busy} onClick={async () => { setBusy(true); await show(); setBusy(false); }}>{busy ? "Analysing…" : "Run engine on WT-07 (demo)"}</Button>} /></Card></div>
     );
 
@@ -58,6 +62,7 @@ export default function Optimization() {
           <Button variant="outline" onClick={() => setRej(true)}><ThumbsDown className="h-4 w-4" /> Reject</Button>
           <Button variant="success" disabled={!sel?.eligible} onClick={() => void approve()}><ThumbsUp className="h-4 w-4" /> Approve selected window</Button></>) : null} />
 
+      <WindForecast />
       {approval === "approved" && (
         <div className="flex items-start gap-3 rounded-xl border border-ok/30 bg-ok-soft p-4 text-ok-ink"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
           <div className="text-sm"><b>Plan approved.</b> Technician assigned and notified. {clearanceConfirmed ? "Site safety clearance confirmed by the technician." : "Site safety clearance is still pending — approval does not authorise work to start before it is confirmed on site."}</div></div>
