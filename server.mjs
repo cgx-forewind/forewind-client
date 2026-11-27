@@ -2,6 +2,7 @@
 // Serves ./dist with SPA fallback. Predictions, optimisation, safety decisions and agent
 // orchestration are NOT implemented here — the frontend talks to the unified engine through
 // src/services/api.ts. Replace the mock handlers there with calls to /api/engine/* (proxy below).
+import { getWind } from "./wind.mjs";
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
@@ -16,6 +17,19 @@ const types = {
 
 createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
+  if (url.pathname === "/api/weather/thornton-bank") {
+    res.setHeader("Content-Type", "application/json");
+    if (req.method !== "GET") {
+      res.writeHead(405, { Allow: "GET" });
+      return res.end();
+    }
+    try {
+      return res.end(JSON.stringify(await getWind()));
+    } catch {
+      res.writeHead(503);
+      return res.end(JSON.stringify({ error: "Thornton Bank forecast unavailable" }));
+    }
+  }
   if (url.pathname === "/healthz") {
     res.writeHead(200, { "content-type": "application/json" });
     return res.end(JSON.stringify({ status: "ok", app: "team-cgx-predictive-maintenance" }));
