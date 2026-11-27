@@ -9,7 +9,6 @@ type Dataset = { source: string; timeColumn: string; turbines: Record<string, Sa
 
 export function HistoricalMetrics({ source, trainingTurbine }: { source: string; trainingTurbine?: string }) {
   const [dataset, setDataset] = useState<Dataset>();
-  const [catalog, setCatalog] = useState<string[]>([]);
   const [failed, setFailed] = useState(false);
   const [id, setId] = useState("");
 
@@ -19,20 +18,14 @@ export function HistoricalMetrics({ source, trainingTurbine }: { source: string;
   useEffect(() => {
     const controller = new AbortController();
     async function load() {
-      async function json(file: string) {
-        const res = await fetch(`./training/metrics/${file}.json`, { signal: controller.signal });
-        if (!res.ok) throw new Error();
-        return res.json();
-      }
-      const [data, headers]: [Dataset, string[][]] = await Promise.all([
-        json(source), Promise.all(sources.map(s => json(s.id + ".columns"))),
-      ]);
+      const response = await fetch(`./training/metrics/${source}.json`, { signal: controller.signal });
+      if (!response.ok) throw new Error();
+      const data: Dataset = await response.json();
       const active = currentReplaySelection();
       const previous = active.source === source ? active.turbine : replaySelection.turbines.get(selectionKey);
       const first = previous && data.turbines[previous] ? previous : trainingTurbine ?? Object.keys(data.turbines)[0];
       if (data.source !== source || !data.turbines[first]?.rows.length) throw new Error();
       if (!controller.signal.aborted) {
-        setCatalog([...new Set(headers.flat())]);
         setWindow((active.source === source && first === active.turbine ? active.window === "training" : first === trainingTurbine) ? "training" : "sample");
         setId(first);
         setDataset(data);
@@ -52,13 +45,13 @@ export function HistoricalMetrics({ source, trainingTurbine }: { source: string;
       </select></label>
       <label>Find column <input className="rounded border p-1" value={query} onChange={e => setQuery(e.target.value)} /></label>
     </div>
-    <MetricTable key={id} source={source} turbine={id} sourceName={sources.find(s => s.id === source)?.name ?? source} sample={sample} rows={rows} catalog={catalog} timeColumn={dataset.timeColumn} query={query} />
+    <MetricTable key={id} source={source} turbine={id} sourceName={sources.find(s => s.id === source)?.name ?? source} sample={sample} rows={rows} timeColumn={dataset.timeColumn} query={query} />
   </CardContent></Card>;
 }
 
-type MetricProps = { source: string; turbine: string; sourceName: string; sample: Sample; rows: Sample["rows"]; catalog: string[]; timeColumn: string; query: string };
+type MetricProps = { source: string; turbine: string; sourceName: string; sample: Sample; rows: Sample["rows"]; timeColumn: string; query: string };
 
-function MetricTable({ source, turbine, sourceName, sample, rows, catalog, timeColumn, query }: MetricProps) {
+function MetricTable({ source, turbine, sourceName, sample, rows, timeColumn, query }: MetricProps) {
   const stamps = useMemo(() => {
     const index = sample.columns.indexOf(timeColumn);
     return rows.map(row => row[index] ?? "");
@@ -71,12 +64,13 @@ function MetricTable({ source, turbine, sourceName, sample, rows, catalog, timeC
     return rows.map(row => [row[wind] ?? null, row[power] ?? null] as const);
   }, [rows, sample.columns, source]);
   const metrics = useMemo(() => pilotSeries(source, turbine, sample.columns, rows, stamps), [source, turbine, sample.columns, rows, stamps]);
-  const fields = useMemo(() => {
-    const indices = new Map(sample.columns.map((name, index) => [name, index]));
-    const names = [...sample.columns, ...catalog.filter(name => !indices.has(name))];
-    return names.filter(name => name.toLowerCase().includes(query.trim().toLowerCase()))
-      .map(name => ({ name, index: indices.get(name) }));
-  }, [sample.columns, catalog, query]);
+  const availableFields = useMemo(() => {
+    const hasReading = (value: string | null | undefined) => value != null && value.trim() !== "";
+    return sample.columns.map((name, index) => ({ name, index })).filter(({ index }) =>
+      sample.rows.some(row => hasReading(row[index])) ||
+      sample.trainingRows?.some(row => hasReading(row[index])));
+  }, [sample]);
+  const fields = availableFields.filter(({ name }) => name.toLowerCase().includes(query.trim().toLowerCase()));
   return <SignalReplay trackKey={source + ":" + turbine + ":" + (rows === sample.trainingRows ? "training" : "sample")} sourceName={sourceName + " · Turbine " + turbine} stamps={stamps} signals={signals} powerUnit={sources.find(s => s.id === source)!.unit}>{reading => <>
     <section aria-label="Derived metrics">
       <h4 className="font-semibold">Derived metrics</h4>
@@ -96,7 +90,7 @@ function MetricTable({ source, turbine, sourceName, sample, rows, catalog, timeC
 }
 
 const SensorValues = memo(function SensorValues({ fields, row, file }: {
-  fields: { name: string; index: number | undefined }[]; row: (string | null)[]; file: string;
+  fields: { name: string; index: number }[]; row: (string | null)[]; file: string;
 }) {
   return <section aria-label="Sensor values">
     <p className="break-all text-xs text-muted">{fields.length} matching column names · {file} · <a className="underline" href="./training/SOURCES.md">Data credits</a></p>
@@ -104,7 +98,7 @@ const SensorValues = memo(function SensorValues({ fields, row, file }: {
       <table className="tbl w-full"><thead className="sticky top-0 bg-white"><tr><th scope="col">Source column</th><th scope="col">Recorded value</th></tr></thead>
         <tbody>{fields.map(({ name, index }) => <tr key={name} className="sensor-row">
           <th className="break-words text-left font-normal" scope="row">{name}</th>
-          <td>{index === undefined ? "Column unavailable for this turbine" : row[index] ?? "Missing at this time"}</td>
+          <td>{row[index]?.trim() || "Missing at this time"}</td>
         </tr>)}</tbody>
       </table>
       {fields.length === 0 && <p>No matching columns.</p>}
