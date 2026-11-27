@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { sources } from "@/lib/trainingSources";
 import { Card, CardContent } from "@/components/ui/card";
 
 type Sample = { columns: string[]; rows: (string | null)[][]; file: string };
@@ -35,7 +36,7 @@ export function HistoricalMetrics({ source }: { source: string }) {
       </select></label>
       <label>Find column <input className="rounded border p-1" value={query} onChange={e => setQuery(e.target.value)} /></label>
     </div>
-    <SignalReplay key={id} sample={sample} timeColumn={dataset.timeColumn} query={query} />
+    <SignalReplay key={id} sourceName={sources.find(s => s.id === source)?.name ?? source} sample={sample} timeColumn={dataset.timeColumn} query={query} />
   </CardContent></Card>;
 }
 
@@ -44,7 +45,7 @@ function timestamp(value: string) {
   return Date.parse(/(?:Z|[+-]\d{2}:\d{2})$/i.test(iso) ? iso : iso + "Z");
 }
 
-function SignalReplay({ sample, timeColumn, query }: { sample: Sample; timeColumn: string; query: string }) {
+function SignalReplay({ sourceName, sample, timeColumn, query }: { sourceName: string; sample: Sample; timeColumn: string; query: string }) {
   const stamp = sample.columns.indexOf(timeColumn);
   const times = useMemo(() => sample.rows.map(row => timestamp(row[stamp] ?? "")), [sample, stamp]);
   const duration = times[times.length - 1] - times[0];
@@ -74,7 +75,7 @@ function SignalReplay({ sample, timeColumn, query }: { sample: Sample; timeColum
     .filter(({ name }) => name.toLowerCase().includes(query.trim().toLowerCase()));
   return <div className="space-y-3">
     <fieldset className="space-y-2 rounded border p-3">
-      <legend className="px-1 font-semibold">Historical signal replay</legend>
+      <legend className="px-1 font-semibold">{sourceName} · Historical signal replay</legend>
       <div className="flex flex-wrap items-center gap-4">
         <button type="button" className="rounded border px-3 py-1" disabled={!(duration > 0)} onClick={() => {
           if (!playing && position >= duration) seek(0);
