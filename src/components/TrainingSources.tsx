@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { HistoricalMetrics } from "@/components/HistoricalMetrics";
+import { currentReplaySelection } from "@/components/SignalReplay";
 import { sources } from "@/lib/trainingSources";
 
 type Sample = { turbine: string; rows: [string, number, number][] };
@@ -55,7 +56,7 @@ function TrainingResult({ source }: { source: typeof sources[number] }) {
 }
 
 export function TrainingSources() {
-  const [id, setId] = useState("care");
+  const [id, setId] = useState(() => currentReplaySelection().source);
   const source = sources.find(s => s.id === id)!;
   return <Card>
     <CardHeader><CardTitle>Historical wind-to-power training</CardTitle></CardHeader>

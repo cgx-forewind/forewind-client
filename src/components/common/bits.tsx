@@ -123,7 +123,7 @@ export function Toasts() {
     warning: <AlertTriangle className="h-4 w-4 text-warn" />, critical: <CircleAlert className="h-4 w-4 text-crit" />,
   };
   return (
-    <div aria-live="polite" className="pointer-events-none fixed bottom-20 right-3 z-[70] flex w-[min(92vw,22rem)] flex-col gap-2 sm:bottom-4 sm:right-4">
+    <div aria-live="polite" className="pointer-events-none fixed bottom-[calc(var(--replay-height,0px)+5rem)] right-3 z-[70] flex w-[min(92vw,22rem)] flex-col gap-2 sm:bottom-[calc(var(--replay-height,0px)+1rem)] sm:right-4">
       {toasts.map((t) => (
         <div key={t.id} role="status" className="pointer-events-auto flex gap-3 rounded-xl border border-line bg-white p-3 shadow-pop animate-slideUp">
           <span className="mt-0.5">{icons[t.tone]}</span>

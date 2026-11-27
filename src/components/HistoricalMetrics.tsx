@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { pilotSeries } from "@/lib/pilotMetrics";
-import { SignalReplay } from "@/components/SignalReplay";
-import { sources } from "@/lib/trainingSources";
+import { currentReplaySelection, SignalReplay } from "@/components/SignalReplay";
+import { sources, replaySelection } from "@/lib/trainingSources";
 import { Card, CardContent } from "@/components/ui/card";
 
 type Sample = { columns: string[]; rows: (string | null)[][]; trainingRows?: (string | null)[][]; file: string };
@@ -13,6 +13,8 @@ export function HistoricalMetrics({ source, trainingTurbine }: { source: string;
   const [failed, setFailed] = useState(false);
   const [id, setId] = useState("");
 
+  const selectionKey = source + (trainingTurbine ? ":training" : ":directory");
+  const [window, setWindow] = useState<"sample" | "training">("sample");
   const [query, setQuery] = useState("");
   useEffect(() => {
     const controller = new AbortController();
@@ -25,24 +27,27 @@ export function HistoricalMetrics({ source, trainingTurbine }: { source: string;
       const [data, headers]: [Dataset, string[][]] = await Promise.all([
         json(source), Promise.all(sources.map(s => json(s.id + ".columns"))),
       ]);
-      const first = trainingTurbine ?? Object.keys(data.turbines)[0];
+      const active = currentReplaySelection();
+      const previous = active.source === source ? active.turbine : replaySelection.turbines.get(selectionKey);
+      const first = previous && data.turbines[previous] ? previous : trainingTurbine ?? Object.keys(data.turbines)[0];
       if (data.source !== source || !data.turbines[first]?.rows.length) throw new Error();
       if (!controller.signal.aborted) {
         setCatalog([...new Set(headers.flat())]);
+        setWindow((active.source === source && first === active.turbine ? active.window === "training" : first === trainingTurbine) ? "training" : "sample");
         setId(first);
         setDataset(data);
       }
     }
     load().catch(() => { if (!controller.signal.aborted) setFailed(true); });
     return () => controller.abort();
-  }, [source, trainingTurbine]);
+  }, [source, trainingTurbine, selectionKey]);
   if (!dataset) return <p role="status">{failed ? "Historical readings unavailable." : "Loading readings…"}</p>;
   const sample = dataset.turbines[id];
-  const rows = (id === trainingTurbine && sample.trainingRows) || sample.rows;
+  const rows = (window === "training" && sample.trainingRows) || sample.rows;
   return <Card><CardContent className="space-y-4 p-4">
     <h3 className="font-semibold">Sensor overview</h3>
     <div className="flex flex-wrap gap-4">
-      <label>Turbine <select aria-label="Turbine" className="rounded border p-1" value={id} onChange={e => { setId(e.target.value); }}>
+      <label>Turbine <select aria-label="Turbine" className="rounded border p-1" value={id} onChange={e => { replaySelection.turbines.set(selectionKey, e.target.value); setWindow(e.target.value === trainingTurbine ? "training" : "sample"); setId(e.target.value); }}>
         {Object.keys(dataset.turbines).map(t => <option key={t}>{t}</option>)}
       </select></label>
       <label>Find column <input className="rounded border p-1" value={query} onChange={e => setQuery(e.target.value)} /></label>
@@ -65,7 +70,7 @@ function MetricTable({ source, turbine, sourceName, sample, rows, catalog, timeC
     return names.filter(name => name.toLowerCase().includes(query.trim().toLowerCase()))
       .map(name => ({ name, index: indices.get(name) }));
   }, [sample.columns, catalog, query]);
-  return <SignalReplay sourceName={sourceName} stamps={stamps}>{reading => <>
+  return <SignalReplay trackKey={source + ":" + turbine + ":" + (rows === sample.trainingRows ? "training" : "sample")} sourceName={sourceName + " · Turbine " + turbine} stamps={stamps}>{reading => <>
     <section aria-label="Derived metrics">
       <h4 className="font-semibold">Derived metrics</h4>
       <table className="tbl w-full"><thead><tr><th>Metric</th><th>Value</th><th>Inputs or availability</th></tr></thead>

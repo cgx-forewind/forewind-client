@@ -37,7 +37,7 @@ export default function Predictive() {
   return (
     <div className="page">
       <PageHeader title="Predictive maintenance" subtitle={<>Failure predictions, RUL and reasoning <SimTag className="ml-1" /></>} />
-      <a className="block rounded-lg border border-line bg-white p-4 hover:border-primary" href="./care/event40.html">
+      <a className="block rounded-lg border border-line bg-white p-4 hover:border-primary" href="#/senior/care-replay">
         <strong>Explore the historical CARE replay →</strong>
         <span className="block text-sm text-muted">Farm A · Turbine 10 · Event 40. Inspect recorded bearing temperatures and model alert onsets.</span>
       </a>

@@ -4,3 +4,9 @@ export const sources = [
   { id: "penmanshiel", name: "Penmanshiel", url: "https://zenodo.org/records/16807304", unit: "kW" },
   { id: "la-haute-borne", name: "La Haute Borne", url: "https://github.com/NatLabRockies/OpenOA/blob/main/examples/data/la_haute_borne.zip", unit: "kW" },
 ];
+
+// Keep each replay view's selection while its route is unmounted.
+export const replaySelection = {
+  directory: "simulation",
+  turbines: new Map<string, string>(),
+};

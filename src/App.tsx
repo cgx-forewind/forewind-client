@@ -1,3 +1,4 @@
+import { ReplayFooter } from "@/components/SignalReplay";
 import { Suspense, lazy, useEffect } from "react";
 import { useStore, roleHome } from "@/store/useStore";
 import { go, parse, useHash } from "@/lib/router";
@@ -31,6 +32,7 @@ function Routes() {
   if (r.area === "senior") {
     switch (r.page) {
       case "turbines": return r.param ? <TurbineDetail id={r.param} /> : <Turbines />;
+      case "care-replay": return <iframe title="CARE event 40 report" src="./care/event40.html" className="block w-full border-0" style={{ height: "calc(100dvh - var(--replay-height, 0px) - 4rem)" }} />;
       case "predictive": return <Predictive />;
       case "optimization": return <Optimization />;
       case "technicians": return <Technicians />;
@@ -74,6 +76,7 @@ export default function App() {
       <Shell>
         <Suspense fallback={<Fallback />}><Routes /></Suspense>
       </Shell>
+      <ReplayFooter />
       <DemoPanel />
       <AssistantDrawer />
       <Toasts />

@@ -58,12 +58,12 @@ export function DemoPanel() {
 
   if (!open)
     return (
-      <button onClick={() => setOpen(true)} aria-label="Open demo controls" className="no-print fixed bottom-[4.75rem] left-3 z-40 flex h-10 items-center gap-2 rounded-full bg-navy px-4 text-xs font-semibold text-white shadow-pop transition hover:bg-slate-800 sm:bottom-4 sm:left-4">
+      <button onClick={() => setOpen(true)} aria-label="Open demo controls" className="no-print fixed bottom-[calc(var(--replay-height,0px)+4.75rem)] left-3 z-40 flex h-10 items-center gap-2 rounded-full bg-navy px-4 text-xs font-semibold text-white shadow-pop transition hover:bg-slate-800 sm:bottom-[calc(var(--replay-height,0px)+1rem)] sm:left-4">
         <PlayCircle className="h-4 w-4" /> Demo mode
       </button>
     );
   return (
-    <section aria-label="Demo controls" className="no-print fixed bottom-[4.75rem] left-3 z-40 flex max-h-[78vh] w-[min(92vw,21rem)] flex-col overflow-hidden rounded-xl border border-line bg-white shadow-pop animate-slideUp sm:bottom-4 sm:left-4">
+    <section aria-label="Demo controls" className="no-print fixed bottom-[calc(var(--replay-height,0px)+4.75rem)] left-3 z-40 flex max-h-[78vh] w-[min(92vw,21rem)] flex-col overflow-hidden rounded-xl border border-line bg-white shadow-pop animate-slideUp sm:bottom-[calc(var(--replay-height,0px)+1rem)] sm:left-4">
       <div className="flex items-center justify-between bg-navy px-4 py-3 text-white">
         <div><p className="text-sm font-semibold">Interactive demo</p><p className="text-[11px] text-white/60">Shared state across all roles</p></div>
         <button onClick={() => setOpen(false)} aria-label="Close demo controls" className="rounded-md p-1 hover:bg-white/10"><X className="h-4 w-4" /></button>

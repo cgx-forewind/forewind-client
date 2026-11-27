@@ -242,9 +242,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", h);
   }, []);
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen replay-shell">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:shadow-pop">Skip to content</a>
-      <aside className={cn("no-print sticky top-0 hidden h-screen shrink-0 flex-col border-r border-line bg-white transition-[width] duration-200 md:flex", collapsed ? "w-[68px]" : "w-64")}>
+      <aside className={cn("no-print sticky top-0 hidden h-[calc(100dvh-var(--replay-height,0px))] shrink-0 flex-col border-r border-line bg-white transition-[width] duration-200 md:flex", collapsed ? "w-[68px]" : "w-64")}>
         <div className={cn("flex h-16 items-center border-b border-line px-4", collapsed && "justify-center px-0")}><Logo collapsed={collapsed} /></div>
         <SidebarNav area={area} collapsed={collapsed} />
         <div className="border-t border-line p-2">
@@ -278,7 +278,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <ContextBanner />
         <main id="main" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">{children}</main>
       </div>
-      <button onClick={() => toggleAssistant(true)} aria-label="Open AI assistant" className="no-print fixed bottom-4 right-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-ai text-white shadow-pop transition hover:scale-105 sm:hidden"><Sparkles className="h-5 w-5" /></button>
+      <button onClick={() => toggleAssistant(true)} aria-label="Open AI assistant" className="no-print fixed bottom-[calc(var(--replay-height,0px)+1rem)] right-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-ai text-white shadow-pop transition hover:scale-105 sm:hidden"><Sparkles className="h-5 w-5" /></button>
       <SearchDialog open={search} setOpen={setSearch} />
     </div>
   );
@@ -289,7 +289,7 @@ export function TechShell({ children }: { children: ReactNode }) {
   const toggleAssistant = useStore((s) => s.toggleAssistant);
   const assignment = useStore((s) => s.assignment);
   return (
-    <div className="mx-auto flex min-h-screen max-w-xl flex-col bg-surface shadow-[0_0_0_1px_#E2E8F0]">
+    <div className="mx-auto flex min-h-screen replay-shell max-w-xl flex-col bg-surface shadow-[0_0_0_1px_#E2E8F0]">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-3 focus:py-2">Skip to content</a>
       <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-white/95 px-3 backdrop-blur">
         <Logo collapsed />
@@ -298,7 +298,7 @@ export function TechShell({ children }: { children: ReactNode }) {
       </header>
       <ContextBanner />
       <main id="main" tabIndex={-1} className="flex-1 pb-24 focus:outline-none">{children}</main>
-      <nav aria-label="Primary" className="fixed bottom-0 left-1/2 z-40 flex w-full max-w-xl -translate-x-1/2 border-t border-line bg-white pb-[env(safe-area-inset-bottom)]">
+      <nav aria-label="Primary" className="fixed bottom-[var(--replay-height,0px)] left-1/2 z-40 flex w-full max-w-xl -translate-x-1/2 border-t border-line bg-white pb-[env(safe-area-inset-bottom)]">
         {NAV.tech.map((it) => {
           const active = hash.startsWith(it.to);
           return (
@@ -309,7 +309,7 @@ export function TechShell({ children }: { children: ReactNode }) {
           );
         })}
       </nav>
-      <button onClick={() => toggleAssistant(true)} aria-label="Open AI assistant" className="fixed bottom-20 right-3 z-40 grid h-11 w-11 place-items-center rounded-full bg-ai text-white shadow-pop"><Sparkles className="h-5 w-5" /></button>
+      <button onClick={() => toggleAssistant(true)} aria-label="Open AI assistant" className="fixed bottom-[calc(var(--replay-height,0px)+5rem)] right-3 z-40 grid h-11 w-11 place-items-center rounded-full bg-ai text-white shadow-pop"><Sparkles className="h-5 w-5" /></button>
     </div>
   );
 }

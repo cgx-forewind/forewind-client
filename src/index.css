@@ -30,3 +30,6 @@
   body { background: white; }
 }
 .tbl tbody tr.sensor-row:hover { @apply bg-blue-50; }
+
+@media screen { .replay-shell { padding-bottom: var(--replay-height, 0px); } }
+.replay-footer { padding-bottom: max(.25rem, env(safe-area-inset-bottom)); }
