@@ -1,3 +1,4 @@
+import { useReplay } from "@/components/SignalReplay";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Bell, ChevronsLeft, ChevronsRight, Menu, Search, Sparkles, WifiOff, UserRound, ShieldAlert, ChevronDown, Check, RefreshCw, AlertTriangle, Wrench, LineChart, CircleAlert } from "lucide-react";
 import type { Role } from "@/types";
@@ -35,6 +36,7 @@ export function Logo({ collapsed = false }: { collapsed?: boolean }) {
 }
 
 function SidebarNav({ area, collapsed, onNavigate }: { area: "senior" | "exec"; collapsed: boolean; onNavigate?: () => void }) {
+  const simulation = useReplay(s => s.simulation);
   const hash = useHash();
   const approval = useStore((s) => s.approval);
   const sc = useStore((s) => s.scenario);
@@ -50,7 +52,7 @@ function SidebarNav({ area, collapsed, onNavigate }: { area: "senior" | "exec"; 
             {active && <span className="absolute -left-2 top-1.5 h-6 w-1 rounded-r bg-primary" />}
             <it.icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
             {!collapsed && <span className="truncate">{it.label}</span>}
-            {dot && <span aria-label="needs attention" className={cn("h-2 w-2 rounded-full", it.badge === "alerts" ? "bg-crit" : "bg-warn", collapsed ? "absolute right-1.5 top-1.5" : "ml-auto")} />}
+            {simulation && dot && <span aria-label="needs attention" className={cn("h-2 w-2 rounded-full", it.badge === "alerts" ? "bg-crit" : "bg-warn", collapsed ? "absolute right-1.5 top-1.5" : "ml-auto")} />}
           </a>
         );
       })}
@@ -225,6 +227,7 @@ export function AssistantDrawer() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const simulation = useReplay(s => s.simulation);
   const hash = useHash();
   const route = parse(hash);
   const area = route.area === "exec" ? "exec" : "senior";
@@ -248,7 +251,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className={cn("flex h-16 items-center border-b border-line px-4", collapsed && "justify-center px-0")}><Logo collapsed={collapsed} /></div>
         <SidebarNav area={area} collapsed={collapsed} />
         <div className="border-t border-line p-2">
-          {!collapsed && <p className="px-2 pb-2 text-[10px] leading-snug text-muted">{AREA_TITLE[area]}<br />Simulated data — not verified SKF data</p>}
+          {!collapsed && <p className="px-2 pb-2 text-[10px] leading-snug text-muted">{AREA_TITLE[area]}<br />{" "}{simulation ? "Simulated fleet" : "Dataset replay"}</p>}
           <button onClick={() => setCollapsed((c) => !c)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!collapsed} className="flex h-9 w-full items-center justify-center gap-2 rounded-lg text-xs font-medium text-muted hover:bg-slate-100">
             {collapsed ? <ChevronsRight className="h-4 w-4" /> : <><ChevronsLeft className="h-4 w-4" /> Collapse</>}
           </button>
@@ -264,27 +267,28 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="no-print sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-line bg-white/90 px-3 backdrop-blur sm:gap-3 sm:px-5">
           <button className="grid h-9 w-9 place-items-center rounded-lg hover:bg-slate-100 md:hidden" aria-label="Open navigation" onClick={() => setMobileNav(true)}><Menu className="h-5 w-5" /></button>
-          <button onClick={() => setSearch(true)} aria-label="Search (press /)" className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-sm text-muted transition hover:border-slate-300 sm:max-w-sm">
+          {simulation && <button onClick={() => setSearch(true)} aria-label="Search (press /)" className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-sm text-muted transition hover:border-slate-300 sm:max-w-sm">
             <Search className="h-4 w-4 shrink-0" /><span className="truncate">Search turbines, technicians…</span><kbd className="ml-auto hidden rounded border border-line bg-white px-1.5 text-[10px] sm:block">/</kbd>
-          </button>
+          </button>}
           <div className="ml-auto flex items-center gap-2">
-            <SyncStatus />
-            <Button variant="ai" size="sm" className="hidden sm:inline-flex" onClick={() => toggleAssistant(true)}><Sparkles className="h-4 w-4" /> Ask AI</Button>
-            <Notifications />
+            {simulation && <SyncStatus />}
+            <Button variant="ai" size="sm" className="hidden sm:inline-flex" onClick={() => simulation ? toggleAssistant(true) : go("#/" + parse(hash).area + "/assistant")}><Sparkles className="h-4 w-4" /> {simulation ? "Ask AI" : "Replay guide"}</Button>
+            {simulation && <Notifications />}
             <RoleSwitcher />
             <div className="hidden h-9 w-9 place-items-center rounded-full bg-navy text-xs font-semibold text-white sm:grid" title={`Demo user — ${role}`} aria-label="User profile (demo)">{role === "senior" ? "MS" : role === "executive" ? "CX" : "OH"}</div>
           </div>
         </header>
-        <ContextBanner />
+        {simulation && <ContextBanner />}
         <main id="main" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">{children}</main>
       </div>
-      <button onClick={() => toggleAssistant(true)} aria-label="Open AI assistant" className="no-print fixed bottom-[calc(var(--replay-height,0px)+1rem)] right-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-ai text-white shadow-pop transition hover:scale-105 sm:hidden"><Sparkles className="h-5 w-5" /></button>
-      <SearchDialog open={search} setOpen={setSearch} />
+      <button onClick={() => simulation ? toggleAssistant(true) : go("#/" + parse(hash).area + "/assistant")} aria-label="Open AI assistant" className="no-print fixed bottom-[calc(var(--replay-height,0px)+1rem)] right-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-ai text-white shadow-pop transition hover:scale-105 sm:hidden"><Sparkles className="h-5 w-5" /></button>
+      <SearchDialog open={simulation && search} setOpen={setSearch} />
     </div>
   );
 }
 
 export function TechShell({ children }: { children: ReactNode }) {
+  const simulation = useReplay(s => s.simulation);
   const hash = useHash();
   const toggleAssistant = useStore((s) => s.toggleAssistant);
   const assignment = useStore((s) => s.assignment);
@@ -294,9 +298,9 @@ export function TechShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-white/95 px-3 backdrop-blur">
         <Logo collapsed />
         <div className="leading-tight"><p className="text-sm font-semibold">Field Operations</p><p className="text-[10px] text-muted">Team CGX</p></div>
-        <div className="ml-auto flex items-center gap-2"><Notifications /><RoleSwitcher /></div>
+        <div className="ml-auto flex items-center gap-2">{simulation && <Notifications />}<RoleSwitcher /></div>
       </header>
-      <ContextBanner />
+      {simulation && <ContextBanner />}
       <main id="main" tabIndex={-1} className="flex-1 pb-24 focus:outline-none">{children}</main>
       <nav aria-label="Primary" className="fixed bottom-[var(--replay-height,0px)] left-1/2 z-40 flex w-full max-w-xl -translate-x-1/2 border-t border-line bg-white pb-[env(safe-area-inset-bottom)]">
         {NAV.tech.map((it) => {
@@ -304,12 +308,12 @@ export function TechShell({ children }: { children: ReactNode }) {
           return (
             <a key={it.to} href={it.to} aria-current={active ? "page" : undefined} className={cn("relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium", active ? "text-primary" : "text-muted")}>
               <it.icon className="h-5 w-5" aria-hidden />{it.label}
-              {it.label === "Task" && assignment && assignment.status !== "completed" && <span className="absolute right-[32%] top-2 h-2 w-2 rounded-full bg-crit" />}
+              {simulation && it.label === "Task" && assignment && assignment.status !== "completed" && <span className="absolute right-[32%] top-2 h-2 w-2 rounded-full bg-crit" />}
             </a>
           );
         })}
       </nav>
-      <button onClick={() => toggleAssistant(true)} aria-label="Open AI assistant" className="fixed bottom-[calc(var(--replay-height,0px)+5rem)] right-3 z-40 grid h-11 w-11 place-items-center rounded-full bg-ai text-white shadow-pop"><Sparkles className="h-5 w-5" /></button>
+      <button onClick={() => simulation ? toggleAssistant(true) : go("#/" + parse(hash).area + "/assistant")} aria-label="Open AI assistant" className="fixed bottom-[calc(var(--replay-height,0px)+5rem)] right-3 z-40 grid h-11 w-11 place-items-center rounded-full bg-ai text-white shadow-pop"><Sparkles className="h-5 w-5" /></button>
     </div>
   );
 }

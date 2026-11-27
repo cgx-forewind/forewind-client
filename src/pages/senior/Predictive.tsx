@@ -1,4 +1,3 @@
-import { TrainingSources } from "@/components/TrainingSources";
 import { WarehouseSignals } from "@/components/WarehouseSignals";
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -41,7 +40,6 @@ export default function Predictive() {
         <strong>Explore the historical CARE replay →</strong>
         <span className="block text-sm text-muted">Farm A · Turbine 10 · Event 40. Inspect recorded bearing temperatures and model alert onsets.</span>
       </a>
-      <TrainingSources />
       <WarehouseSignals />
       <h2 className="font-semibold">Simulated fleet predictions</h2>
       <div className="grid grid-cols-3 gap-3">

@@ -1,5 +1,5 @@
 import { sources } from "@/lib/trainingSources";
-import { useHash } from "@/lib/router";
+
 import { create } from "zustand";
 import defaultSample from "../../public/training/care.json";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -12,18 +12,17 @@ function timestamp(value: string) {
 type Signals = readonly [string | number | null, string | number | null];
 type Track = { key: string; sourceName: string; stamps: string[]; signals: Signals[]; powerUnit: string };
 
-const useReplay = create<{ track: Track; reading: number; simulationDirectory: boolean }>(() => ({
+export const useReplay = create<{ track: Track; reading: number; simulation: boolean }>(() => ({
   track: { key: "care:10:training", sourceName: "CARE · Farm A · Turbine 10", powerUnit: "source units", signals: defaultSample.rows.map(r => [r[1], r[2]]), stamps: defaultSample.rows.map(r => String(r[0])) },
-  reading: 0, simulationDirectory: true,
+  reading: 0, simulation: false,
 }));
 
-export function useReplayDataset(directory = false) {
-  return useReplay(s => directory && s.simulationDirectory ? "simulation" : s.track.key.split(":")[0]);
+export function useReplayDataset(includeSimulation = false) {
+  return useReplay(s => includeSimulation && s.simulation ? "simulation" : s.track.key.split(":")[0]);
 }
 
 function DatasetPicker() {
-  const directory = useHash().split("?")[0] === "#/senior/turbines";
-  const selected = useReplayDataset(directory);
+  const selected = useReplayDataset(true);
   const request = useRef(0);
   const [pending, setPending] = useState("");
   const [error, setError] = useState(false);
@@ -33,11 +32,20 @@ function DatasetPicker() {
     setError(false);
     setPending("");
     if (id === "simulation") {
-      useReplay.setState({ simulationDirectory: true });
+      useReplay.setState({ simulation: true });
+      return;
+    }
+    if (id === "delivery-test") {
+      const power = [1000, 1000, 990, 980, 970, 970];
+      useReplay.setState({ simulation: false, reading: 0, track: {
+        key: "delivery-test:T1:sample", sourceName: "Delivery test · T1", powerUnit: "kW",
+        stamps: power.map((_, i) => new Date(Date.UTC(2020, 0, 1, 0, i * 10)).toISOString()),
+        signals: power.map(value => [8, value]),
+      } });
       return;
     }
     if (currentReplaySelection().source === id) {
-      useReplay.setState({ simulationDirectory: false });
+      useReplay.setState({ simulation: false });
       return;
     }
     setPending(id);
@@ -50,7 +58,7 @@ function DatasetPicker() {
       if (version === request.current) {
         useReplay.setState({ track: { key: `${id}:${sample.turbine}:training`,
           sourceName: `${source.name} · Turbine ${sample.turbine}`, powerUnit: source.unit, signals: sample.rows.map(row => [row[1], row[2]]), stamps: sample.rows.map(row => row[0]) },
-          reading: 0, simulationDirectory: false });
+          reading: 0, simulation: false });
       }
     } catch {
       if (version === request.current) setError(true);
@@ -59,7 +67,8 @@ function DatasetPicker() {
     }
   }
   return <label className="text-xs">Dataset <select aria-label="Dataset" className="rounded border p-1" value={pending || selected} onChange={e => void choose(e.target.value)}>
-    {directory && <option value="simulation">Simulated fleet</option>}
+    <option value="simulation">Simulated fleet</option>
+    <option value="delivery-test">Delivery test · 100% → 97%</option>
     {sources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
   </select>{error && <span role="status"> Dataset unavailable.</span>}</label>;
 }
@@ -93,7 +102,7 @@ export function ReplayReadings() {
   const format = (value: Signals[number], unit: string) => value === null
     ? "Unavailable" : Number(value).toLocaleString("en-GB", { maximumSignificantDigits: 5 }) + " " + unit;
   return <section aria-label="Historical replay readings" className="flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-line bg-white px-4 py-2 text-sm tabular-nums">
-    <div><strong>{track.sourceName}</strong><p className="text-xs text-muted">Historical replay · {track.stamps[reading]}</p></div>
+    <div><strong>{track.sourceName}</strong><p className="text-xs text-muted">{track.key.startsWith("delivery-test:") ? "Synthetic fixture" : "Historical replay"} · {track.stamps[reading]}</p></div>
     <dl className="flex flex-wrap gap-x-6">
       <div><dt className="text-xs text-muted">Wind speed</dt><dd>{format(wind, "m/s")}</dd></div>
       <div><dt className="text-xs text-muted">Active power</dt><dd>{format(power, track.powerUnit)}</dd></div>
@@ -103,6 +112,7 @@ export function ReplayReadings() {
 
 export function ReplayFooter() {
   const track = useReplay(s => s.track);
+  const simulation = useReplay(s => s.simulation);
   const footer = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     const el = footer.current!;
@@ -114,7 +124,7 @@ export function ReplayFooter() {
   }, []);
   return <footer ref={footer} aria-label="Historical playback" className="replay-footer no-print fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white px-3 pt-1 shadow-pop">
     <div className="mx-auto max-w-[1400px]"><DatasetPicker /></div>
-    <Controls key={track.key} sourceName={track.sourceName} stamps={track.stamps} />
+    {!simulation && <Controls key={track.key} sourceName={track.sourceName} stamps={track.stamps} />}
   </footer>;
 }
 
@@ -142,12 +152,23 @@ function Controls({ sourceName, stamps }: Pick<Track, "sourceName" | "stamps">) 
     }, 100);
     return () => window.clearInterval(timer);
   }, [playing, speed, duration]);
+  useEffect(() => {
+    const jump = (event: Event) => {
+      const index = (event as CustomEvent<number>).detail;
+      if (Number.isInteger(index) && times[index] !== undefined) {
+        setPlaying(false);
+        seek(times[index] - times[0]);
+      }
+    };
+    window.addEventListener("forewind:seek", jump);
+    return () => window.removeEventListener("forewind:seek", jump);
+  }, [times]);
   const next = times.findIndex(t => t > times[0] + position);
   const reading = next === -1 ? times.length - 1 : Math.max(0, next - 1);
   useLayoutEffect(() => { useReplay.setState({ reading }); }, [reading]);
   return <>
     <fieldset className="mx-auto max-w-[1400px] min-w-0 text-xs">
-      <legend className="px-1 font-semibold">{sourceName} · Historical signal replay</legend>
+      <legend className="px-1 font-semibold">{sourceName} · Signal replay</legend>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <button type="button" className="rounded border px-3 py-1" disabled={!(duration > 0)} onClick={() => {
           if (!playing && position >= duration) seek(0);

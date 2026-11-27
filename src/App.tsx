@@ -1,4 +1,4 @@
-import { ReplayFooter, ReplayReadings } from "@/components/SignalReplay";
+import { ReplayFooter, ReplayReadings, useReplay } from "@/components/SignalReplay";
 import { Suspense, lazy, useEffect } from "react";
 import { useStore, roleHome } from "@/store/useStore";
 import { go, parse, useHash } from "@/lib/router";
@@ -26,9 +26,13 @@ const Fallback = () => (
   <div className="page"><div className="grid gap-4 md:grid-cols-2"><CardSkeleton /><CardSkeleton /></div></div>
 );
 
+const ReplayWorkspace = lazy(() => import("@/pages/ReplayWorkspace"));
+
 function Routes() {
   const hash = useHash();
   const r = parse(hash);
+  const simulation = useReplay(s => s.simulation);
+  if (!simulation && r.page !== "care-replay") return <ReplayWorkspace route={r} />;
   if (r.area === "senior") {
     switch (r.page) {
       case "turbines": return r.param ? <TurbineDetail id={r.param} /> : <Turbines />;
@@ -70,18 +74,19 @@ export default function App() {
     if (want !== role) setRole(want);
   }, [area]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const simulation = useReplay(s => s.simulation);
   const Shell = area === "tech" ? TechShell : AppShell;
   return (
     <>
       <Shell>
-        <ReplayReadings />
+        {!simulation && <ReplayReadings />}
         <Suspense fallback={<Fallback />}><Routes /></Suspense>
       </Shell>
       <ReplayFooter />
-      <DemoPanel />
+      {simulation && <><DemoPanel />
       <AssistantDrawer />
-      <Toasts />
-      {area === "tech" && <IncomingCallOverlay />}
+      <Toasts /></>}
+      {simulation && area === "tech" && <IncomingCallOverlay />}
     </>
   );
 }
