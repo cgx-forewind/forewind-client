@@ -44,7 +44,7 @@ export function SignalReplay({ sourceName, stamps, children }: {
           setPlaying(!playing);
         }}>{playing ? "Pause" : position >= duration ? "Replay" : "Play"}</button>
         <label>Speed <select aria-label="Replay speed" value={speed} onChange={e => setSpeed(Number(e.target.value))}>
-          <option value={1}>1× real time</option><option value={60}>60×</option><option value={600}>600×</option>
+          <option value={1}>1× real time</option><option value={60}>60×</option><option value={600}>600×</option><option value={6000}>6000×</option>
         </select></label>
       <label>Sample time <select aria-label="Sample time" className="rounded border p-1" value={reading} onChange={e => seek(times[Number(e.target.value)] - times[0])}>
         {options}
