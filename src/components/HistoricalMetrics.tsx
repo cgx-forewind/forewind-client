@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useState } from "react";
+import { pilotSeries } from "@/lib/pilotMetrics";
 import { SignalReplay } from "@/components/SignalReplay";
 import { sources } from "@/lib/trainingSources";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,25 +47,39 @@ export function HistoricalMetrics({ source, trainingTurbine }: { source: string;
       </select></label>
       <label>Find column <input className="rounded border p-1" value={query} onChange={e => setQuery(e.target.value)} /></label>
     </div>
-    <MetricTable key={id} sourceName={sources.find(s => s.id === source)?.name ?? source} sample={sample} rows={rows} catalog={catalog} timeColumn={dataset.timeColumn} query={query} />
+    <MetricTable key={id} source={source} turbine={id} sourceName={sources.find(s => s.id === source)?.name ?? source} sample={sample} rows={rows} catalog={catalog} timeColumn={dataset.timeColumn} query={query} />
   </CardContent></Card>;
 }
 
-type MetricProps = { sourceName: string; sample: Sample; rows: Sample["rows"]; catalog: string[]; timeColumn: string; query: string };
+type MetricProps = { source: string; turbine: string; sourceName: string; sample: Sample; rows: Sample["rows"]; catalog: string[]; timeColumn: string; query: string };
 
-function MetricTable({ sourceName, sample, rows, catalog, timeColumn, query }: MetricProps) {
+function MetricTable({ source, turbine, sourceName, sample, rows, catalog, timeColumn, query }: MetricProps) {
   const stamps = useMemo(() => {
     const index = sample.columns.indexOf(timeColumn);
     return rows.map(row => row[index] ?? "");
   }, [sample, rows, timeColumn]);
+  const metrics = useMemo(() => pilotSeries(source, turbine, sample.columns, rows, stamps), [source, turbine, sample.columns, rows, stamps]);
   const fields = useMemo(() => {
     const indices = new Map(sample.columns.map((name, index) => [name, index]));
     const names = [...sample.columns, ...catalog.filter(name => !indices.has(name))];
     return names.filter(name => name.toLowerCase().includes(query.trim().toLowerCase()))
       .map(name => ({ name, index: indices.get(name) }));
   }, [sample.columns, catalog, query]);
-  return <SignalReplay sourceName={sourceName} stamps={stamps}>{reading =>
-    <SensorValues fields={fields} row={rows[reading]} file={sample.file} />}
+  return <SignalReplay sourceName={sourceName} stamps={stamps}>{reading => <>
+    <section aria-label="Derived metrics">
+      <h4 className="font-semibold">Derived metrics</h4>
+      <table className="tbl w-full"><thead><tr><th>Metric</th><th>Value</th><th>Inputs or availability</th></tr></thead>
+        <tbody>{(["giz1", "simi1", "shipi1", "lazer1"] as const).map(name => {
+          const { value, detail } = metrics[reading][name];
+          const label = { giz1: "Delivery ratio", simi1: "Inverse tip-speed ratio", shipi1: "Wind per kelvin", lazer1: "Weekly delivery vs baseline" }[name];
+          const unit = { giz1: "", simi1: "", shipi1: " m/(s·K)", lazer1: "%" }[name];
+          return <tr className="sensor-row" key={name} title={detail}><th scope="row">{name} · {label}</th>
+            <td>{value === null ? "Unavailable" : value.toLocaleString("en-GB", { maximumSignificantDigits: 5 }) + unit}</td><td>{detail}</td></tr>;
+        })}</tbody>
+      </table>
+      <p className="text-xs text-muted">Earlier Giz v0 · Farm C turbine 21 · <a className="underline" href="https://github.com/ChicoShi/cgx-hackathon-2026/blob/main/reports/giz_weekly.csv">49 historical weekly brake-pressure ratios</a></p>
+    </section>
+    <SensorValues fields={fields} row={rows[reading]} file={sample.file} /></>}
   </SignalReplay>;
 }
 
