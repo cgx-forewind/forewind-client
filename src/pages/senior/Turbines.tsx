@@ -1,3 +1,5 @@
+import { HistoricalMetrics } from "@/components/HistoricalMetrics";
+import { sources } from "@/lib/trainingSources";
 import { useMemo, useState } from "react";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
 import { useStore } from "@/store/useStore";
@@ -14,6 +16,7 @@ import type { Risk, TurbineView } from "@/types";
 const maintLabel: Record<string, string> = { none: "—", awaiting_approval: "Awaiting approval", scheduled: "Scheduled", dispatching: "Dispatching", in_progress: "In progress", emergency: "Emergency response" };
 
 export default function Turbines() {
+  const [source, setSource] = useState("simulation");
   const fleet = useStore((s) => s.fleet);
   const [q, setQ] = useState("");
   const [risk, setRisk] = useState<Risk | "all">("all");
@@ -37,7 +40,12 @@ export default function Turbines() {
   );
   return (
     <div className="page">
-      <PageHeader title="Turbine management" subtitle={<>Searchable fleet directory <SimTag className="ml-1" /></>} />
+      <PageHeader title="Turbine management" subtitle={source === "simulation" ? <>Fleet directory <SimTag className="ml-1" /></> : "Historical SCADA readings"} />
+      <label>Dataset <select aria-label="Dataset" className="rounded border p-1" value={source} onChange={e => setSource(e.target.value)}>
+        <option value="simulation">Simulated fleet</option>
+        {sources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+      </select></label>
+      {source !== "simulation" ? <HistoricalMetrics key={source} source={source} /> :
       <Card>
         <div className="flex flex-wrap items-center gap-3 border-b border-line p-4">
           <div className="relative w-full sm:w-72"><Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted" /><Input aria-label="Search turbines" className="pl-9" placeholder="Search ID, site, model…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
@@ -67,7 +75,7 @@ export default function Turbines() {
             </table>
           </div>
         )}
-      </Card>
+      </Card>}
     </div>
   );
 }
