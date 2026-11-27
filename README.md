@@ -39,3 +39,27 @@ Databricks Apps supplies the service principal via `DATABRICKS_CLIENT_ID` and `D
 Open **Predictive maintenance → Historical wind-to-power training** and choose CARE, Kelmarsh, Penmanshiel or La Haute Borne. Each selection fits a fresh power baseline to the chosen turbine. The bundled windows, import command and dataset credits are documented in [training sources](public/training/SOURCES.md).
 
 **Maintenance optimisation → Thornton Bank** fetches current 10 m forecast winds from MET Norway through the Node server. Start the production build with `npm run build && npm start`. The server needs outbound HTTPS to api.met.no. Historical samples also work when the weather provider is unavailable.
+
+### Explain a CARE alert in the browser
+
+Use the current reading to create a request. Forewind's Node server uses MiraConnect to reach the hub.
+
+```js
+import { createAlertExplanation } from "/explain-alert.js";
+
+const explain = createAlertExplanation({
+  dataset: "CARE to Compare v6", turbine_id: 10, event_id: 40,
+  timestamp: "2022-12-25T11:50:00", alert: "Generator bearing heat above ambient",
+  heat_above_ambient_c: 59, threshold_c: 56,
+});
+const job = await explain();
+if (job.status === "done") console.log(job.text);
+```
+
+After a timeout or connection error, call the same `explain()` again to resume. A confirmed `failed` job can be rerun by creating a new request.
+
+For the contest install, run `npm run seed:hub` as the Forewind service user.
+It seeds the two codegeex.dev URLs in `$XDG_CONFIG_HOME/forewind/hub.env`
+(default `~/.config/forewind/hub.env`) and preserves an existing file.
+Load that file into the Node service environment and supply `MIRA_TOKEN` from
+the service's secret configuration. The browser needs no configuration.
