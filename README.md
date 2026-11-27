@@ -27,3 +27,9 @@ npm start          # serves dist/ (Databricks Apps entry, honours DATABRICKS_APP
 
 ## Databricks Apps
 `app.yaml` + `server.mjs` (static server, `/healthz`). No external infrastructure; the map is a local SVG. Inter is loaded from Google Fonts — self-host it if the workspace blocks external fonts (falls back to system UI fonts).
+
+### Diggibyte warehouse readings
+
+In Predictive maintenance, **Load latest 20** reads the configured signal source through the Node server. The fleet model still uses simulation. Run the production build with `npm run build && npm start` (Node 20+). Static hosting alone cannot serve the warehouse endpoint.
+
+Set server environment variables `DATABRICKS_SQL_WAREHOUSE_ID`, `DATABRICKS_TOKEN` (from the host's secret manager), and `FOREWIND_SIGNAL_TABLE` (catalog.schema.table or view). Map four existing columns through `FOREWIND_COLUMN_TIME`, `FOREWIND_COLUMN_TURBINE`, `FOREWIND_COLUMN_SIGNAL`, and `FOREWIND_COLUMN_VALUE`. Use a timestamp column for ordering. For wide-format measurements a team view can present one signal per row. All viewers who can reach this server endpoint can see the selected readings: configure only a dataset approved for that audience. The server uses the [Statement Execution API](https://docs.databricks.com/aws/en/dev-tools/sql-execution-tutorial) at diggibyte.databricks.com. The warehouse identity needs read access to the source and permission to use the warehouse.
