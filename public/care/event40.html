@@ -14,6 +14,8 @@ table{width:100%;border-collapse:collapse}td,th{text-align:left;border-bottom:1p
 <section><label for="scope">Alert scope</label> <select id="scope"><option value="all">Full replay</option><option value="label">Inside labelled event window</option></select><p id="total" aria-live="polite"></p><label for="case">Review case</label> <select id="case"></select>
 <p id="caseSummary"></p><label for="alert">Alert onset</label> <select id="alert"></select>
 <p id="observation" aria-live="polite"></p>
+<button type="button" id="explain">Explain this alert</button>
+<p id="explanation" role="status"></p>
 <div class="legend"><b class="heat">━ Bearing heat above ambient</b> · <b class="limit">┄ Power-band threshold</b> · dashed vertical line marks the alert</div>
 <canvas role="img" aria-label="Temperature difference and threshold during the hour before and after the selected alert"></canvas>
 <details><summary>Inspect ten-minute readings</summary><table><thead><tr><th>Dataset time</th><th>Heat °C</th><th>Limit °C</th></tr></thead><tbody></tbody></table></details></section>
@@ -51,6 +53,7 @@ function selectCase(){
 }
 function draw(){
   const selected=data.rows[Number(alertMenu.value)], center=stamp(selected[0]);
+  showExplanation();
   const rows=data.rows.filter(r=>Math.abs(stamp(r[0])-center)<=3600000);
   find('#observation').textContent='At onset: '+fmt(selected[1])+' °C above ambient; threshold '+fmt(selected[2])+' °C. '+(selected[0]>=data.start&&selected[0]<=data.end?'Inside':'Outside')+' the labelled window.';
   find('tbody').replaceChildren();
@@ -82,6 +85,63 @@ function draw(){
     ctx.stroke();
   }
 }
+const explanations=new Map();
+function showExplanation(){
+  const row=data.rows[Number(alertMenu.value)];
+  const entry=explanations.get(row[0]);
+  find('#explain').disabled=Boolean(entry && (entry.pending || entry.answer));
+  find('#explanation').textContent=entry?.answer || entry?.message || '';
+}
+find('#explain').onclick=async ()=>{
+  const [timestamp,heat,limit]=data.rows[Number(alertMenu.value)];
+  const entry=explanations.get(timestamp) || {id:crypto.randomUUID()};
+  if(entry.pending || entry.answer)return;
+  explanations.set(timestamp,entry);
+  entry.pending=true;
+  entry.message='Requesting an explanation…';
+  showExplanation();
+  try{
+    const deadline=Date.now()+120000;
+    const signal=AbortSignal.timeout(120000);
+    if(!entry.submitted){
+      const response=await fetch('/api/explain',{
+        signal,
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({request_id:entry.id,action:'explain',args:{
+          dataset:'CARE to Compare v6',turbine_id:10,event_id:40,timestamp,
+          alert:'Generator bearing heat above ambient',heat_above_ambient_c:heat,threshold_c:limit
+        }})
+      });
+      if(!response.ok)throw new Error();
+      entry.submitted=true;
+    }
+    while(Date.now()<deadline){
+      await new Promise(resolve=>setTimeout(resolve,2000));
+      const status=await fetch('/api/explain/'+encodeURIComponent(entry.id),{signal,cache:'no-store'});
+      if(!status.ok)throw new Error();
+      const job=await status.json();
+      if(job.status==='done'){
+        if(typeof job.result?.text!=='string' || !job.result.text.trim())throw new Error();
+        entry.answer=job.result.text;
+        return;
+      }
+      if(job.status==='failed'){
+        entry.message='The explanation failed. Select “Explain this alert” for a new request.';
+        entry.submitted=false;
+        entry.id=crypto.randomUUID();
+        return;
+      }
+      if(!['queued','running'].includes(job.status))throw new Error();
+    }
+    entry.message='Still thinking. Select “Explain this alert” to check again.';
+  }catch(error){
+    entry.message=error.name==='TimeoutError'?'Still thinking. Select “Explain this alert” to check again.':
+      'Explanation unavailable. Select “Explain this alert” to retry.';
+  }finally{
+    entry.pending=false;
+    showExplanation();
+  }
+};
 caseMenu.onchange=selectCase;alertMenu.onchange=draw;window.addEventListener('resize',draw);
 find('#scope').onchange=refreshScope;
 refreshScope();

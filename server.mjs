@@ -2,6 +2,7 @@
 // Serves ./dist with SPA fallback. Predictions, optimisation, safety decisions and agent
 // orchestration are NOT implemented here — the frontend talks to the unified engine through
 // src/services/api.ts. Replace the mock handlers there with calls to /api/engine/* (proxy below).
+import { MiraConnect } from "./mira-connect.mjs";
 import { getWind } from "./wind.mjs";
 import { readSignals } from "./warehouse.mjs";
 import { createServer } from "node:http";
@@ -18,6 +19,45 @@ const types = {
 
 createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
+  if (url.pathname === "/api/explain" || url.pathname.startsWith("/api/explain/")) {
+    const reply = (status, data) => {
+      res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      res.end(JSON.stringify(data));
+    };
+    const submit = url.pathname === "/api/explain";
+    if (req.method !== (submit ? "POST" : "GET")) return reply(405, { error: "method_not_allowed" });
+    const { MIRA_SUBMIT_URL, MIRA_STATUS_URL, MIRA_TOKEN } = process.env;
+    if (!MIRA_TOKEN || !MIRA_SUBMIT_URL || !MIRA_STATUS_URL) return reply(503, { error: "hub_unconfigured" });
+    try {
+      const hub = new MiraConnect(MIRA_SUBMIT_URL, MIRA_STATUS_URL, MIRA_TOKEN, "form");
+      const validId = id => typeof id === "string" && /^[a-zA-Z0-9_-]{1,128}$/.test(id);
+      if (!submit) {
+        const id = url.pathname.slice("/api/explain/".length);
+        if (!validId(id)) return reply(400, { error: "invalid_request_id" });
+        return reply(200, await hub.status(id));
+      }
+      if (req.headers["content-type"]?.split(";")[0].trim() !== "application/json")
+        return reply(415, { error: "expected_json" });
+      const chunks = [];
+      let size = 0;
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size > 16384) return reply(413, { error: "request_too_large" });
+        chunks.push(chunk);
+      }
+      let body;
+      try { body = JSON.parse(Buffer.concat(chunks).toString()); }
+      catch { return reply(400, { error: "invalid_json" }); }
+      if (!validId(body?.request_id) || body.action !== "explain" ||
+          !body.args || Array.isArray(body.args) || typeof body.args !== "object")
+        return reply(400, { error: "invalid_explanation_request" });
+      const job = await hub.submit(body.request_id, "explain", body.args);
+      return reply(job.status === "queued" ? 202 : 200, job);
+    } catch (error) {
+      const status = [404, 409, 429].includes(error.status) ? error.status : 502;
+      return reply(status, { error: "hub_request_failed" });
+    }
+  }
   if (url.pathname === "/api/warehouse/signals") {
     res.setHeader("Content-Type", "application/json");
     res.setHeader("Cache-Control", "no-store");
