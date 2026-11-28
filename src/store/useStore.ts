@@ -240,7 +240,13 @@ export const useStore = create<State>((set, get) => {
       try {
         const p = get().prediction[id];
         const windows = await api.getWindows(id, p.rulDays);
-        const best = windows.find((w) => w.cheapestEligible)!;
+        const best = windows.find((w) => w.cheapestEligible);
+        if (!best) {
+          patch({ windows, selectedWindowId: null, candidates: [], selectionNote: "", approval: "none",
+            scenario: { kind: "yellow", turbineId: id, phase: "alert" } });
+          toast({ tone: "warning", title: "No eligible maintenance window", body: "Review the candidate checks." });
+          return;
+        }
         const dayOffset = Math.round((best.start - new Date().setHours(0, 0, 0, 0)) / 86400000);
         const rk = await api.rankTechnicians({ turbineId: id, emergency: false, dayOffset });
         const top = rk.candidates.find((c) => c.qualified);

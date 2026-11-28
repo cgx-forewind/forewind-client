@@ -63,3 +63,13 @@ It seeds the two codegeex.dev URLs in `$XDG_CONFIG_HOME/forewind/hub.env`
 (default `~/.config/forewind/hub.env`) and preserves an existing file.
 Load that file into the Node service environment and supply `MIRA_TOKEN` from
 the service's secret configuration. The browser needs no configuration.
+
+### Explain the simulated maintenance plan
+
+In **Simulated fleet → Maintenance optimisation**, raise a yellow alert, then click
+**Why this maintenance window?**. The app sends the nine candidate slots to the
+hub using action `maintenance_window`. A sink advertising this action can call
+`scripts/maintenance_window.py::explain_window(args)` and return its result.
+The rule compares eligible slots by lost revenue, then by safety margin.
+The explanation includes the chosen UTC interval and compares alternatives.
+If every slot fails a check, it reports that there is no eligible window.

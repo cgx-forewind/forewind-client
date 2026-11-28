@@ -48,10 +48,10 @@ createServer(async (req, res) => {
       let body;
       try { body = JSON.parse(Buffer.concat(chunks).toString()); }
       catch { return reply(400, { error: "invalid_json" }); }
-      if (!validId(body?.request_id) || body.action !== "explain" ||
+      if (!validId(body?.request_id) || !["explain", "maintenance_window"].includes(body.action) ||
           !body.args || Array.isArray(body.args) || typeof body.args !== "object")
         return reply(400, { error: "invalid_explanation_request" });
-      const job = await hub.submit(body.request_id, "explain", body.args);
+      const job = await hub.submit(body.request_id, body.action, body.args);
       return reply(job.status === "queued" ? 202 : 200, job);
     } catch (error) {
       const status = [404, 409, 429].includes(error.status) ? error.status : 502;

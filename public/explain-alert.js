@@ -1,7 +1,7 @@
 // Create once per selected alert. Calling the returned function resumes the same job.
-export function createAlertExplanation(args) {
+export function createAlertExplanation(args, action = 'explain') {
   const id = crypto.randomUUID();
-  const body = JSON.stringify({ request_id: id, action: 'explain', args });
+  const body = JSON.stringify({ request_id: id, action, args });
   let submitted = false;
 
   return async function getExplanation() {

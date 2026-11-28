@@ -12,6 +12,7 @@ import { dayStart } from "@/engine/fleet";
 import { tokens } from "@/lib/tokens";
 import type { MaintWindow } from "@/types";
 
+import MaintenanceExplanation from "./MaintenanceExplanation";
 import WindForecast from "./WindForecast";
 
 const DAY = 86400000;
@@ -81,6 +82,8 @@ export default function Optimization() {
           </CardContent>
         </Card>
       )}
+
+      <MaintenanceExplanation key={JSON.stringify(windows)} windows={windows} />
 
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2">
